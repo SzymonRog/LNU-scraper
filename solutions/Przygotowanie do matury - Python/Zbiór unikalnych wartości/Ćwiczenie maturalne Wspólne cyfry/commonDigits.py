@@ -1,0 +1,2 @@
+def commonDigits():
+    pass

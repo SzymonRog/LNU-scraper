@@ -1,0 +1,2 @@
+def longestSingleLetter( string ):
+    pass

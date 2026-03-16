@@ -1,0 +1,2 @@
+def twoPrimes():
+    pass

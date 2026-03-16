@@ -1,0 +1,12 @@
+.img1 { 
+    z-index: 20;
+    position: absolute; 
+    top: 130px;
+    left: 350px;
+    }
+.img2 {
+    z-index: 10;
+    position: absolute;  
+    top: 0px;
+    left: 0px;
+    }

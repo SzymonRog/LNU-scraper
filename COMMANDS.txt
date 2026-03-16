@@ -1,0 +1,41 @@
+LNU-scraper commands (PowerShell)
+
+Install dependencies:
+  python -m pip install -r requirements.txt
+
+Show CLI help:
+  python main.py --help
+  python main.py sync --help
+  python main.py solve --help
+  python main.py submit --help
+
+Sync tasks (fetch tasks not downloaded or not completed):
+  python main.py sync
+
+Periodic sync (every 5 minutes = 300s):
+  python main.py sync --interval 300
+
+Solve + submit one task/lesson by id:
+  python main.py solve --lesson 12345
+
+Solve + submit all tasks under a DB path prefix (accepts / or \):
+  python main.py solve --path "/Język Python"
+  python main.py solve --path "Język Python\\Poziom Rozszerzony\\Iteratory i listy składane"
+
+Submit existing solutions already stored in SQLite (optionally filter by path prefix):
+  python main.py submit
+  python main.py submit --path "{^menu_lessons}\\Język Python\\Poziom Rozszerzony" --delay 1.0
+
+Change log level:
+  python main.py --log-level DEBUG sync
+  python main.py --log-level INFO solve --path "/Język Python"
+
+Use optional YAML config:
+  python main.py --config config.yml sync
+  python main.py --config config.yml solve --path "/Język Python"
+
+Ollama (free/local AI provider) quickstart:
+  ollama serve
+  ollama pull qwen2.5-coder:3b
+  python main.py solve --lesson 12345
+

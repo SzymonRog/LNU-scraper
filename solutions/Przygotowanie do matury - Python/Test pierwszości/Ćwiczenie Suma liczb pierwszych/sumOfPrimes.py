@@ -1,0 +1,2 @@
+def sumOfPrimes( numbers ):
+    pass

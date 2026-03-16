@@ -1,0 +1,2 @@
+def countSelfSimilar( numbers ):
+    pass

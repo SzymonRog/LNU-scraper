@@ -1,0 +1,11 @@
+p {
+    width: 30%;
+    height: 30%;
+    background-color: lightgrey; 
+    border-width: 2px;
+    border-style: solid;
+    border-color: grey;
+    border-radius:15px;
+}
+
+

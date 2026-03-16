@@ -1,0 +1,1 @@
+# Do tego pliku Twój program powinien zapisać wynik

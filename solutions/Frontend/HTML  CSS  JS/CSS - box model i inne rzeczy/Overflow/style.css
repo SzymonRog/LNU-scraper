@@ -1,0 +1,7 @@
+div{
+  background-color: #FFFFCC;
+  width: 200px;
+  height: 50px;
+  margin-bottom: 10px;
+  overflow: auto;
+}

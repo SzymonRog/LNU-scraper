@@ -1,0 +1,2 @@
+def isASimilar( strings ):
+    pass

@@ -1,0 +1,2 @@
+def onLine( points ):
+    pass

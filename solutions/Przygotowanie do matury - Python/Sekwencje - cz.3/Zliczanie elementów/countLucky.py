@@ -1,0 +1,2 @@
+def countLucky( numbers ):
+    pass

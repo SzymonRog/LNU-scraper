@@ -1,0 +1,2 @@
+def fixedPrinter( string ):
+    pass

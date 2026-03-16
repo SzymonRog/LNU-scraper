@@ -1,0 +1,1 @@
+unsigned int sumOfFactorialDigits(unsigned short n) { unsigned int sum = 0, result = 1; for (int i = 2; i <= n; i++) result *= i; for (; result; result /= 10) sum += result % 10; return sum;}

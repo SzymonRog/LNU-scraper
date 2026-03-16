@@ -1,0 +1,2 @@
+def sumOfElements( numbers ):
+    pass

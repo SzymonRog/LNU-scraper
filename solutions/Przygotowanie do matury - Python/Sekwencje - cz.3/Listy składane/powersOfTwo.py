@@ -1,0 +1,2 @@
+def powersOfTwo():
+    pass

@@ -1,0 +1,59 @@
+body {
+    font-family: "Verdana", sans-serif;
+}
+
+span {
+    background-color: purple;
+    color: white;
+    padding: 5px;
+    font-weight: bolder;
+    border-radius: 5px;
+}
+
+.lists {
+    color: navy;
+}
+
+table {
+    color: #FFFFFF;
+    background-color: #6495ED;
+    font-size: 16px;
+    margin: 30px;
+}
+
+th {
+    font-style: italic;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.column23 {
+    text-align: center;
+}
+
+img {
+    border: 5px;
+    position: sticky;
+    border-color: orange;
+    border-style: outset;
+    border-radius: 10px;
+    float: left;
+}
+
+.overflow-text {
+            overflow:auto;
+            width: 250px;
+            height: 100px;
+            background-color: #f9f9f9; 
+            border: 2px solid #ddd;    
+            border-radius: 8px;        
+            padding: 10px;
+            margin-top: 20px;
+        }
+        
+.poem-title {
+            margin: 0 0 8px 0; 
+            text-align: center;
+            font-weight: bold;
+        }        
+        

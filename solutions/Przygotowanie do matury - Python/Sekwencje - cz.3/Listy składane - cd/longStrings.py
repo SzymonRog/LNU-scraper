@@ -1,0 +1,2 @@
+def longStrings( strings ):
+    pass

@@ -1,0 +1,30 @@
+body {
+    font-family: "Verdana", sans-serif;
+}
+
+span {
+    background-color: purple;
+    color: white;
+    padding: 5px;
+    font-weight: bolder;
+    border-radius: 5px;
+}
+
+.lists {
+    color: navy;
+}
+
+table {
+    color: #FFFFFF;
+    background-color: #6495ED;
+    font-size: 16px;
+    margin: 30px;
+}
+
+th {
+    font-style: italic;
+}
+
+.column23 {
+    text-align: center;
+}

@@ -1,0 +1,2 @@
+def sumOfLengths( strings ):
+    pass

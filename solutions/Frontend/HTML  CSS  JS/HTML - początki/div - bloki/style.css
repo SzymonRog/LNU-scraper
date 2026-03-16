@@ -1,0 +1,26 @@
+body > div:nth-of-type(n) {
+    font-family: Helvetica, Arial
+}
+
+
+body > div:nth-of-type(1) {
+    background-color: #31572C;
+    color: #ECF39E;
+    border-radius: 5px;
+    padding: 5px 40px;
+}
+
+body > div:nth-of-type(2) {
+    background-color: #4F772D;
+    color: #ECF39E;
+    border-radius: 5px;
+    padding: 5px 40px;
+}
+
+span {
+    background-color: purple;
+    color: white;
+    padding: 5px;
+    font-weight: bolder;
+    border-radius: 5px;
+}

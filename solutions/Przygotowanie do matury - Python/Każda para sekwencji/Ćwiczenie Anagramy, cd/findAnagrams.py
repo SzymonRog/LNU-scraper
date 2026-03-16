@@ -1,0 +1,2 @@
+def findAnagrams( strings ):
+    pass
