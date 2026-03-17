@@ -60,11 +60,12 @@ class ReliableSubmitter:
             }
 
             try:
-                log.info("Submitting", extra={"task_id": task_id, "attempt": attempt, "files": [f.file_name for f in solution.files]})
+                log.info("Submitting", extra={"task_id": task_id, "attempt": attempt})
                 payload = await self.api.compile_solution(task_id, files=files, telemetry=telemetry)
                 immediate = self.api.parse_is_correct(payload)
 
                 accepted = await self._confirm_acceptance(task_id, immediate)
+
                 if accepted is True:
                     self.store.update_is_correct(task_id, True)
                     log.info("Accepted", extra={"task_id": task_id, "attempt": attempt})
@@ -77,8 +78,22 @@ class ReliableSubmitter:
                         status="accepted",
                     )
 
-                # Not accepted yet (or unknown) -> retry
-                log.warning("Not accepted yet", extra={"task_id": task_id, "attempt": attempt, "immediate_is_correct": immediate})
+                if accepted is False:
+                    # FIX: serwer potwierdził odrzucenie — NIE resubmituj tego samego kodu
+                    self.store.update_is_correct(task_id, False)
+                    log.warning("Confirmed rejection",
+                                extra={"task_id": task_id, "attempt": attempt, "payload": payload})
+                    return SubmissionResult(
+                        task_id=task_id,
+                        accepted=False,
+                        attempt=attempt,
+                        server_is_correct=False,
+                        server_payload=payload,
+                        status="rejected",
+                    )
+
+                # accepted is None → timeout, nieznany stan → retry ma sens
+                log.warning("Confirmation timeout", extra={"task_id": task_id, "attempt": attempt})
                 if attempt < self.max_attempts:
                     delay = _exp_backoff(attempt, self.backoff_base_seconds, self.backoff_max_seconds)
                     await asyncio.sleep(delay)
@@ -89,18 +104,21 @@ class ReliableSubmitter:
                     task_id=task_id,
                     accepted=False,
                     attempt=attempt,
-                    server_is_correct=bool(immediate) if immediate is not None else None,
+                    server_is_correct=None,
                     server_payload=payload,
-                    status="rejected" if immediate is False else "unknown",
+                    status="unknown",
                 )
+
             except Exception as e:
                 self.store.mark_submit_attempt(task_id, attempt, last_error=repr(e))
-                log.error("Submit error", extra={"task_id": task_id, "attempt": attempt, "error": repr(e)}, exc_info=True)
+                log.error("Submit error", extra={"task_id": task_id, "attempt": attempt, "error": repr(e)},
+                          exc_info=True)
                 if attempt < self.max_attempts:
                     delay = _exp_backoff(attempt, self.backoff_base_seconds, self.backoff_max_seconds)
                     await asyncio.sleep(delay)
                     continue
-                return SubmissionResult(task_id=task_id, accepted=False, attempt=attempt, server_is_correct=None, server_payload=None, status="unknown")
+                return SubmissionResult(task_id=task_id, accepted=False, attempt=attempt, server_is_correct=None,
+                                        server_payload=None, status="unknown")
 
         return SubmissionResult(task_id=task_id, accepted=False, attempt=self.max_attempts, status="unknown")
 
@@ -153,29 +171,30 @@ class ReliableSubmitter:
 
     @staticmethod
     def extract_feedback(server_payload: dict[str, Any] | None) -> str | None:
-        """Extract human-readable compile/test feedback from LNU response.
-
-        The backend sometimes returns payload under root or under `data`.
-        We try both and return a condensed string suitable for LLM repair attempts.
-        """
         if not server_payload:
             return None
 
         data = server_payload.get("data")
-        if isinstance(data, dict):
-            p = data
-        else:
-            p = server_payload
+        p = data if isinstance(data, dict) else server_payload
 
         parts: list[str] = []
 
-        # Compilation errors (best-effort; field names observed in your docs)
         if isinstance(p.get("compilationErrors"), (str, bool)) and p.get("compilationErrors"):
             parts.append(f"compilationErrors={p.get('compilationErrors')}")
         if p.get("buildStatus") is False:
             parts.append("buildStatus=false")
         if p.get("runStatus") is False:
             parts.append("runStatus=false")
+
+        build_out = p.get("buildOutput")
+        if isinstance(build_out, str) and build_out.strip():
+            parts.append(f"buildOutput (compiler error):\n{build_out.strip()[:2000]}")
+
+        # FIX: dodatkowe pola które LNU może zwracać
+        for key in ("error", "message", "stderr", "errorMessage", "compileOutput"):
+            val = p.get(key)
+            if isinstance(val, str) and val.strip():
+                parts.append(f"{key}: {val.strip()}")
 
         run_data = p.get("runData")
         if isinstance(run_data, dict):
@@ -187,21 +206,32 @@ class ReliableSubmitter:
                     parts.append(f"tests: pass={passed} score={score}")
 
                 tests = run_tests.get("tests")
-                if isinstance(tests, list) and tests:
-                    # Include only failing outputs (result == "0") and cap size.
+                if isinstance(tests, list):
                     fail_out: list[str] = []
                     for t in tests:
                         if not isinstance(t, dict):
                             continue
                         if str(t.get("result")) != "0":
                             continue
-                        out = t.get("output")
+                        out = t.get("output", "")
                         if isinstance(out, str) and out.strip():
                             fail_out.append(out.strip())
-                        if len(fail_out) >= 5:
+                        if len(fail_out) >= 3:
                             break
                     if fail_out:
                         parts.append("failing_tests_output:\n" + "\n---\n".join(fail_out)[:8000])
 
-        return "\n".join(parts).strip() or None
+        result = "\n".join(parts).strip()
+
+
+        if not result:
+            log.warning("extract_feedback: no known fields found, raw payload keys: %s", list(p.keys()))
+            # Zwróć skrócony dump jako ostateczny fallback
+            try:
+                import json
+                result = f"[raw server response, parse manually]: {json.dumps(p, ensure_ascii=False)[:2000]}"
+            except Exception:
+                pass
+
+        return result or None
 

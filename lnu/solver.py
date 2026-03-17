@@ -38,9 +38,32 @@ def _build_prompt(task: Task, lesson_fields: dict[str, Any]) -> str:
     title = task.title or lesson_fields.get("title") or ""
     content = lesson_fields.get("content_text") or ""
     path = task.path or ""
+
     required_files = lesson_fields.get("required_files") or []
     starter_files = lesson_fields.get("starter_files") or []
     previous_feedback = lesson_fields.get("previous_feedback") or ""
+
+    starter_signatures = []
+    import re as _re
+    for sf in starter_files:
+        for match in _re.finditer(r'^def\s+\w+\([^)]*\)\s*:', sf.get("code", ""), _re.MULTILINE):
+            starter_signatures.append(match.group(0))
+
+    sig_block = ""
+    if starter_signatures:
+        sig_block = (
+                "CRITICAL: Keep EXACTLY these function signatures (do NOT add or remove parameters):\n"
+                + "\n".join(f"  {s}" for s in starter_signatures)
+                + "\n\n"
+        )
+
+    feedback_block = ""
+    if previous_feedback:
+        feedback_block = (
+            "CRITICAL — PREVIOUS ATTEMPT FAILED. You MUST fix these errors:\n"
+            f"{previous_feedback}\n"
+            "Do NOT repeat the same mistakes. Read the errors carefully before writing any code.\n\n"
+        )
 
     # Design decision: force a strict JSON output to enable reliable parsing
     # and strongly bias the model toward simple, correct, lesson-aligned code.
@@ -51,12 +74,15 @@ def _build_prompt(task: Task, lesson_fields: dict[str, Any]) -> str:
         "- Prefer standard library where possible.\n"
         "- Do not create extra files, do not rename files.\n"
         "- Be extremely precise with syntax – no missing colons, wrong names, or bad indentation.\n"
+        "- IMPORTANT: If the task does not explicitly specify otherwise, do not add any arguments to the function — always assume that it should be executed without parameters.\n"
         "- Solve each task in the simplest correct way that matches the lesson description.\n"
         "- Think carefully about edge cases and test your logic mentally on a few inputs before finalizing.\n"
         "Return ONLY a single JSON object with this schema:\n"
         '{ "files": [ { "fileName": "...", "code": "..." } ] }\n'
         "No markdown, no explanations.\n\n"
-        "IMPORTANT: You MUST use EXACTLY these file names and only these:\n"
+        + feedback_block
+        + sig_block
+        + "IMPORTANT: You MUST use EXACTLY these file names and only these:\n"
         + "\n".join([f"- {name}" for name in required_files])
         + "\n\n"
         "Starter code (edit it, keep file names):\n"
@@ -122,7 +148,11 @@ class TaskSolver:
         if isinstance(t_code, dict) and isinstance(t_code.get("files"), list):
             template_files = [f for f in t_code["files"] if isinstance(f, dict) and f.get("fileName")]
         if not template_files:
-            raise ValueError("Lesson has no t_code.files template; cannot know expected file names")
+            log.warning(
+                "Skipping task — no t_code.files template (likely a theory/reading lesson)",
+                extra={"task_id": task.id}
+            )
+            return None
 
         required_names = [str(f["fileName"]) for f in template_files]
         fields["required_files"] = required_names
@@ -172,6 +202,11 @@ class TaskSolver:
                     Task(id=task.id, title=task.title, path=task.path, sort_order=task.sort_order, label=task.label),
                     previous_feedback=previous_feedback,
                 )
+
+                if solution is None:
+                    log.info("Task skipped (no template)", extra={"task_id": task.id})
+                    return  # nie rzucaj błędu, po prostu idź dalej
+
                 # Persist solution in DB (backward compatible format)
                 solution_json = json.dumps(
                     {
@@ -184,6 +219,14 @@ class TaskSolver:
 
                 result = await self.submitter.submit_with_confirmation(solution)
                 feedback = ReliableSubmitter.extract_feedback(result.server_payload)
+                log.warning(
+                    "Feedback po odrzuceniu",
+                    extra={
+                        "task_id": task.id,
+                        "raw_payload": result.server_payload,  # ← cały payload
+                        "feedback": feedback,  # ← co z niego wyciągnęło
+                    }
+                )
                 debug_context["attempts"].append(
                     {
                         "attempt": attempt,

@@ -39,3 +39,8 @@ Ollama (free/local AI provider) quickstart:
   ollama pull qwen2.5-coder:3b
   python main.py solve --lesson 12345
 
+
+
+
+ python main.py solve --path "Język JAVA/Poziom Podstawowy/Podstawowe elementy języka"
+

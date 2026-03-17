@@ -11,7 +11,7 @@ try:
 except Exception:  # pragma: no cover
     load_dotenv = None  # type: ignore
 
-from lnu.ai_clients import NoopAIClient, OllamaClient
+from lnu.ai_clients import NoopAIClient, OllamaClient, GroqClient
 from lnu.api_client import AuthCookies, LnuApiClient
 from lnu.config import load_config
 from lnu.fetcher import TaskFetcher
@@ -71,10 +71,14 @@ async def _run(args: argparse.Namespace) -> None:
         max_attempts=cfg.submit_max_attempts,
     )
 
-    if cfg.ai_provider.lower() == "ollama":
-        ai_client = OllamaClient(base_url=cfg.ollama_base_url, model=cfg.ollama_model)
+    groq_key = os.getenv("GROQ_API_KEY")
+    if groq_key:
+        ai_client = GroqClient(api_key=groq_key, model="llama-3.3-70b-versatile")
     else:
-        ai_client = NoopAIClient()
+        if cfg.ai_provider.lower() == "ollama":
+            ai_client = OllamaClient(base_url=cfg.ollama_base_url, model=cfg.ollama_model)
+        else:
+            ai_client = NoopAIClient()
 
     solver = TaskSolver(
         api=api,
